@@ -6,13 +6,14 @@ const notificationCtrl = require("../controllers/notificationController");
 const journalCtrl      = require("../controllers/journalController");
 const watchlistCtrl    = require("../controllers/watchlistController");
 const protect          = require("../middleware/auth");
+const { loginLimiter } = require("../middleware/rateLimiter");
 
 router.get("/health", (req, res) =>
   res.json({ status: "ok", timestamp: new Date().toISOString() })
 );
 
 // ── Public routes (no JWT required) ──────────────────────────────────
-router.post("/auth/login", authCtrl.login);
+router.post("/auth/login", loginLimiter, authCtrl.login);
 
 // ── Protected routes (JWT required) ──────────────────────────────────
 router.use(protect);

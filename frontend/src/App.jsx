@@ -226,7 +226,7 @@ export default function App() {
                   {user?.name || user?.username || "MeroShare"}
                 </div>
                 {user?.email && (
-                  <a className="topbar__profile-email" href={`mailto:${user.email}`}>
+                  <a className="topbar__profile-email" >
                     {user.email}
                   </a>
                 )}

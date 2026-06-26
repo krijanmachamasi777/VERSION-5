@@ -7,6 +7,15 @@ const journalCtrl      = require("../controllers/journalController");
 const watchlistCtrl    = require("../controllers/watchlistController");
 const protect          = require("../middleware/auth");
 const { loginLimiter } = require("../middleware/rateLimiter");
+const {
+  validateJournalTrade,
+  validateInvestmentTrade,
+  validateTradeUpdate,
+  validateWatchlistCreate,
+  validateWatchlistUpdate,
+  validateObjectIdParam,
+  validateNotificationEmail,
+} = require("../middleware/validate");
 
 router.get("/health", (req, res) =>
   res.json({ status: "ok", timestamp: new Date().toISOString() })
@@ -22,7 +31,7 @@ router.get("/auth/me",             authCtrl.getMe);
 router.post("/auth/logout",        authCtrl.logout);
 
 router.get("/profile",             ctrl.getProfile);
-router.post("/notifications/send-email", notificationCtrl.sendNotificationEmail);
+router.post("/notifications/send-email", validateNotificationEmail, notificationCtrl.sendNotificationEmail);
 
 router.get("/shares",              ctrl.getShares);
 router.get("/shares/:script",      ctrl.getShareByScript);
@@ -38,20 +47,20 @@ router.get("/issues",              ctrl.getApplicableIssues);
 router.get("/wacc",                ctrl.getWacc);
 
 router.get("/journal-trades",      journalCtrl.getJournalTrades);
-router.post("/journal-trades",     journalCtrl.createJournalTrade);
-router.put("/journal-trades/:id",  journalCtrl.updateJournalTrade);
-router.delete("/journal-trades/:id", journalCtrl.deleteJournalTrade);
+router.post("/journal-trades",     validateJournalTrade, journalCtrl.createJournalTrade);
+router.put("/journal-trades/:id",  validateObjectIdParam, validateTradeUpdate, journalCtrl.updateJournalTrade);
+router.delete("/journal-trades/:id", validateObjectIdParam, journalCtrl.deleteJournalTrade);
 
 router.get("/investment-trades",   journalCtrl.getInvestmentTrades);
-router.post("/investment-trades",  journalCtrl.createInvestmentTrade);
-router.put("/investment-trades/:id", journalCtrl.updateInvestmentTrade);
-router.delete("/investment-trades/:id", journalCtrl.deleteInvestmentTrade);
+router.post("/investment-trades",  validateInvestmentTrade, journalCtrl.createInvestmentTrade);
+router.put("/investment-trades/:id", validateObjectIdParam, validateTradeUpdate, journalCtrl.updateInvestmentTrade);
+router.delete("/investment-trades/:id", validateObjectIdParam, journalCtrl.deleteInvestmentTrade);
 
 router.get("/sync/logs",           ctrl.getSyncLogs);
 
 router.get("/watchlist-items",           watchlistCtrl.getWatchlistItems);
-router.post("/watchlist-items",          watchlistCtrl.createWatchlistItem);
-router.put("/watchlist-items/:id",       watchlistCtrl.updateWatchlistItem);
-router.delete("/watchlist-items/:id",    watchlistCtrl.deleteWatchlistItem);
+router.post("/watchlist-items",          validateWatchlistCreate, watchlistCtrl.createWatchlistItem);
+router.put("/watchlist-items/:id",       validateObjectIdParam, validateWatchlistUpdate, watchlistCtrl.updateWatchlistItem);
+router.delete("/watchlist-items/:id",    validateObjectIdParam, watchlistCtrl.deleteWatchlistItem);
 
 module.exports = router;

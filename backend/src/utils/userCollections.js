@@ -25,7 +25,23 @@ const COLLECTION_SCHEMAS = {
   watchlistentries:   watchlistEntrySchema,
 };
 
-const modelCache = {};
+// Validates a username/name before it is interpolated into a physical
+// MongoDB collection name. Real values are display names like
+// "Krijan Machamasi", so spaces, dots and hyphens are allowed — but the
+// characters MongoDB treats specially in namespaces ($ and the null byte),
+// the "/" path separator, and the reserved "system." prefix are rejected to
+// prevent collection-name injection.
+function assertValidName(name, action) {
+  const ok =
+    typeof name === "string" &&
+    name.length > 0 &&
+    name.length <= 64 &&
+    /^[A-Za-z0-9 ._-]+$/.test(name) &&
+    !/^system\./i.test(name.trim());
+  if (!ok) {
+    throw new Error(`Invalid username for collection ${action}.`);
+  }
+}
 
 // Tracks in-flight/completed index builds per model so concurrent callers
 // awaiting the same model share one promise instead of each kicking off
@@ -51,12 +67,7 @@ const indexReady = {};
  * Collection name format: "Krijan.shares" → appears as folder in Compass
  */
 async function getModel(username, collectionName) {
-  // Guard: the username is interpolated into the physical MongoDB collection
-  // name, so it must be strictly validated to prevent collection-name
-  // injection (e.g. names containing "$", ".", or system-namespace prefixes).
-  if (typeof username !== "string" || !/^[A-Za-z0-9_]{1,64}$/.test(username)) {
-    throw new Error("Invalid username for collection resolution.");
-  }
+  assertValidName(username, "resolution");
 
   // Capitalize first letter to match folder display: "krijan" → "Krijan"
   const folderName = username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
@@ -106,9 +117,7 @@ async function getModel(username, collectionName) {
  * and await indexes itself before any read/write happens.
  */
 async function ensureUserCollections(username) {
-  if (typeof username !== "string" || !/^[A-Za-z0-9_]{1,64}$/.test(username)) {
-    throw new Error("Invalid username for collection creation.");
-  }
+  assertValidName(username, "creation");
   const folderName = username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
   const db = mongoose.connection.db;
 

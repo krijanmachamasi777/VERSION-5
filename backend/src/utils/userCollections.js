@@ -51,6 +51,13 @@ const indexReady = {};
  * Collection name format: "Krijan.shares" → appears as folder in Compass
  */
 async function getModel(username, collectionName) {
+  // Guard: the username is interpolated into the physical MongoDB collection
+  // name, so it must be strictly validated to prevent collection-name
+  // injection (e.g. names containing "$", ".", or system-namespace prefixes).
+  if (typeof username !== "string" || !/^[A-Za-z0-9_]{1,64}$/.test(username)) {
+    throw new Error("Invalid username for collection resolution.");
+  }
+
   // Capitalize first letter to match folder display: "krijan" → "Krijan"
   const folderName = username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
   const collectionKey = `${folderName}.${collectionName}`; // e.g. "Krijan.shares"
@@ -99,6 +106,9 @@ async function getModel(username, collectionName) {
  * and await indexes itself before any read/write happens.
  */
 async function ensureUserCollections(username) {
+  if (typeof username !== "string" || !/^[A-Za-z0-9_]{1,64}$/.test(username)) {
+    throw new Error("Invalid username for collection creation.");
+  }
   const folderName = username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
   const db = mongoose.connection.db;
 

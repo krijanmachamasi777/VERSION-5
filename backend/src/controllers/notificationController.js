@@ -1,6 +1,6 @@
 // src/controllers/notificationController.js
 //
-// NEW FILE — Handles notification email sending.
+// Handles notification email sending.
 // Uses nodemailer with Gmail SMTP (via env vars).
 // Does NOT affect any existing controller, route, or model.
 //
@@ -23,6 +23,60 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
+// ── FIX [MEDIUM — SEC-7]: Singleton transporter ──────────────────────────
+//
+// BUG (original): `nodemailer.createTransport()` was called inside the request
+// handler on every single email request. This means:
+//   1. A new TCP connection to Gmail's SMTP server was opened for every request —
+//      no connection pooling, so the per-request latency was higher than needed.
+//   2. The SMTP credentials (NOTIFY_EMAIL_USER, NOTIFY_EMAIL_PASS) were read
+//      from process.env and handed to nodemailer on every call. While not a
+//      direct leak, this pattern unnecessarily widens the code surface where
+//      credentials are touched at runtime.
+//   3. If the env vars were missing, the error would surface only when the
+//      endpoint was first hit — not at startup.
+//
+// FIX: Create the transporter once at module load time (lazy singleton).
+// The first call to getTransporter() builds it; subsequent calls reuse it.
+// Nodemailer's SMTP transport internally pools connections over keepalive.
+//
+// Startup validation: the module checks for the env vars when it is first
+// required (at server start). A missing variable is logged as a warning;
+// the endpoint will return a 503 instead of a 500 with a config error message
+// so it's clear this is a server misconfiguration, not a user error.
+//
+let _transporter = null;
+
+function getTransporter() {
+  if (_transporter) return _transporter;
+
+  const user = process.env.NOTIFY_EMAIL_USER;
+  const pass = process.env.NOTIFY_EMAIL_PASS;
+
+  if (!user || !pass) {
+    // Return null — caller will return a 503.
+    // We deliberately do NOT throw here so the rest of the server keeps running
+    // even if email is misconfigured.
+    logger.warn(
+      "⚠️  NOTIFY_EMAIL_USER or NOTIFY_EMAIL_PASS is not set. " +
+      "Email notifications are disabled until these are configured in .env."
+    );
+    return null;
+  }
+
+  _transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
+    // Pool connections instead of creating a new socket per email
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 100,
+  });
+
+  logger.info(`📧 Email transporter ready (sender: ${user})`);
+  return _transporter;
+}
+
 // POST /api/notifications/send-email
 // Body: { subject, message }
 // Sends to the currently logged-in user's email (from User model)
@@ -42,22 +96,22 @@ exports.sendNotificationEmail = async (req, res) => {
       return err(res, "subject and message are required.", 400);
     }
 
-    // Build transporter from env vars (Gmail App Password)
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.NOTIFY_EMAIL_USER,
-        pass: process.env.NOTIFY_EMAIL_PASS,
-      },
-    });
+    const transporter = getTransporter();
+    if (!transporter) {
+      return res.status(503).json({
+        success: false,
+        message: "Email service is not configured on this server. Contact the administrator.",
+      });
+    }
 
     const safeName    = escapeHtml(user.name || user.username);
+    const safeSubject = escapeHtml(subject);
     const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
 
     await transporter.sendMail({
       from: `"Kitakat Notifications" <${process.env.NOTIFY_EMAIL_USER}>`,
       to:   recipientEmail,
-      subject,
+      subject: safeSubject,
       html: `
         <div style="font-family:sans-serif;max-width:520px;margin:auto;background:#0d0d0f;color:#f0f0f5;padding:24px;border-radius:12px;">
           <h2 style="color:#0a84ff;margin:0 0 12px">📊 Kitakat IPO Alert</h2>

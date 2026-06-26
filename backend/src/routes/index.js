@@ -6,7 +6,7 @@ const notificationCtrl = require("../controllers/notificationController");
 const journalCtrl      = require("../controllers/journalController");
 const watchlistCtrl    = require("../controllers/watchlistController");
 const protect          = require("../middleware/auth");
-const { loginLimiter } = require("../middleware/rateLimiter");
+const { loginLimiter, emailNotificationLimiter } = require("../middleware/rateLimiter");
 const {
   validateJournalTrade,
   validateInvestmentTrade,
@@ -31,7 +31,17 @@ router.get("/auth/me",             authCtrl.getMe);
 router.post("/auth/logout",        authCtrl.logout);
 
 router.get("/profile",             ctrl.getProfile);
-router.post("/notifications/send-email", validateNotificationEmail, notificationCtrl.sendNotificationEmail);
+
+// FIX [HIGH — SEC-5]: emailNotificationLimiter applied AFTER `protect` so
+// req.user.id is available for per-user rate key. The order is:
+//   protect (sets req.user) → emailNotificationLimiter (keys on req.user.id)
+//   → validateNotificationEmail (sanitizes body) → handler
+router.post(
+  "/notifications/send-email",
+  emailNotificationLimiter,
+  validateNotificationEmail,
+  notificationCtrl.sendNotificationEmail
+);
 
 router.get("/shares",              ctrl.getShares);
 router.get("/shares/:script",      ctrl.getShareByScript);

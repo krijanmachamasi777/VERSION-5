@@ -17,6 +17,13 @@ const ok  = (res, data, meta = {}) => res.json({ success: true, ...meta, data })
 const err = (res, message, status = 500) =>
   res.status(status).json({ success: false, message });
 
+// Escapes regex metacharacters so user-supplied query values can't inject
+// a malicious pattern (ReDoS / match-everything). Used for the issues
+// `type` filter, which is the only place we build a RegExp from input.
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function getUserName(req) {
   return req.user.name;
 }
@@ -140,7 +147,11 @@ exports.getApplicableIssues = async (req, res) => {
   try {
     const ApplicableIssue = await getModel(getUserName(req), "applicableissues");
     const { type }  = req.query;
-    const filter    = type ? { shareTypeName: new RegExp(type, "i") } : {};
+    // Escape + length-cap the user input before building a RegExp to prevent
+    // ReDoS and "match everything" injection via crafted patterns.
+    const filter    = type
+      ? { shareTypeName: new RegExp(escapeRegex(String(type).slice(0, 100)), "i") }
+      : {};
     const issues    = await ApplicableIssue.find(filter)
       .sort({ issueOpenDate: -1 })
       .select("-__v -createdAt -updatedAt")

@@ -1,10 +1,14 @@
 // src/app.js — Express app setup
 const express = require("express");
 const cors    = require("cors");
+const helmet  = require("helmet");
 const routes  = require("./routes/index");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
+
+// Security HTTP headers (X-Content-Type-Options, HSTS, frameguard, etc.)
+app.use(helmet());
 
 // Trust the first proxy hop (Render/Railway/nginx/etc). Required so
 // express-rate-limit (and req.ip generally) sees the real client IP

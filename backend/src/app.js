@@ -6,6 +6,13 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
+// Trust the first proxy hop (Render/Railway/nginx/etc). Required so
+// express-rate-limit (and req.ip generally) sees the real client IP
+// instead of the proxy's IP — without this, all traffic would appear to
+// come from one IP and the login rate limiter would lock out everyone
+// together.
+app.set("trust proxy", 1);
+
 // ── Allowed frontend origins ─────────────────────────────────────────────
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",")

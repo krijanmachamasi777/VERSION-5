@@ -12,6 +12,17 @@ const ok  = (res, data, meta = {}) => res.json({ success: true, ...meta, data })
 const err = (res, message, status = 400) =>
   res.status(status).json({ success: false, message });
 
+// Escape user-supplied text before placing it in HTML email bodies.
+// Prevents HTML/script injection (XSS) via subject/message fields.
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // POST /api/notifications/send-email
 // Body: { subject, message }
 // Sends to the currently logged-in user's email (from User model)
@@ -40,6 +51,9 @@ exports.sendNotificationEmail = async (req, res) => {
       },
     });
 
+    const safeName    = escapeHtml(user.name || user.username);
+    const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
+
     await transporter.sendMail({
       from: `"Kitakat Notifications" <${process.env.NOTIFY_EMAIL_USER}>`,
       to:   recipientEmail,
@@ -48,10 +62,10 @@ exports.sendNotificationEmail = async (req, res) => {
         <div style="font-family:sans-serif;max-width:520px;margin:auto;background:#0d0d0f;color:#f0f0f5;padding:24px;border-radius:12px;">
           <h2 style="color:#0a84ff;margin:0 0 12px">📊 Kitakat IPO Alert</h2>
           <p style="color:#888;margin:0 0 16px;font-size:13px;">
-            Hi <strong style="color:#f0f0f5">${user.name || user.username}</strong>,
+            Hi <strong style="color:#f0f0f5">${safeName}</strong>,
           </p>
           <div style="background:#141416;border:1px solid #2a2a2e;border-radius:8px;padding:16px;white-space:pre-line;font-size:14px;line-height:1.6">
-            ${message.replace(/\n/g, "<br>")}
+            ${safeMessage}
           </div>
           <p style="color:#555;font-size:11px;margin:16px 0 0">
             This is an automated alert from Kitakat Investment Journal.

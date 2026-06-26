@@ -42,7 +42,10 @@ journalEntrySchema.index(
   { waccId: 1 },
   {
     unique: true,
+<<<<<<< HEAD
     name: "journalentries_waccId_unique_nonempty",
+=======
+>>>>>>> 8076237d6148fb044177d62e63a60e7dca6092a0
     // MongoDB partial index filters only support a restricted operator set
     // ($exists, $gt, $gte, $lt, $lte, $type, $and). $ne (and the $not it
     // compiles to internally) is NOT supported and makes index creation fail

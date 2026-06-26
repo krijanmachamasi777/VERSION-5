@@ -5,6 +5,10 @@ const cron = require("node-cron");
 const app = require("./app");
 const { connect, disconnect } = require("./config/database");
 const { runFullSync } = require("./services/syncService");
+<<<<<<< HEAD
+=======
+const { validateEncryptionKey } = require("./utils/encryption");
+>>>>>>> 8076237d6148fb044177d62e63a60e7dca6092a0
 const logger = require("./utils/logger");
 
 const PORT = process.env.PORT || 5000;
@@ -18,6 +22,18 @@ async function listenOnPort(port) {
 }
 
 async function start() {
+<<<<<<< HEAD
+=======
+  // 0. Validate the MeroShare token encryption key — fail loudly at boot
+  //    rather than crashing on the first login attempt.
+  try {
+    validateEncryptionKey();
+  } catch (err) {
+    logger.error(`❌ ${err.message}`);
+    process.exit(1);
+  }
+
+>>>>>>> 8076237d6148fb044177d62e63a60e7dca6092a0
   // 1. Connect to MongoDB — server will NOT start if DB is unavailable
   //    (for a financial app, we want to fail loudly, not silently)
   try {

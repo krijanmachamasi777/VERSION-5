@@ -26,7 +26,8 @@ const TABS = [
   { id: "losing",       label: "📉 Losing" },
   { id: "ms-portfolio", label: "🏦 MS Portfolio", ms: true },
   { id: "ms-ipos",      label: "📋 Open IPOs",    ms: true },
-  //{ id: "ms-wacc",      label: "⚖ WACC",          ms: true },
+
+  { id: "ms-wacc",      label: "⚖ WACC",          ms: true },
 ];
 
 export default function App() {
@@ -226,7 +227,7 @@ export default function App() {
                   {user?.name || user?.username || "MeroShare"}
                 </div>
                 {user?.email && (
-                  <a className="topbar__profile-email" href={`mailto:${user.email}`}>
+        <a className="topbar__profile-email" >
                     {user.email}
                   </a>
                 )}

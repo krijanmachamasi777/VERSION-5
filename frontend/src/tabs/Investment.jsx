@@ -106,7 +106,9 @@ export function Investment({ investments, onScripClick }) {
               const isSold = !!inv.soldDate;
               const durationText = formatHoldingDuration(inv.boughtDate, inv.soldDate);
               const ltp = Number(inv.ltp || 0) || 0;
-              const valueAsOfLtp = Number(inv.valueAsOfLtp ?? (ltp * Number(inv.qty || 0))) || 0;
+
+              const valueAsOfLtp = Number( (ltp * Number(inv.qty || 0))) || 0;
+
               const ltpClass = !isSold && ltp > Number(inv.buyRate || 0) ? "td--profit" : !isSold && ltp < Number(inv.buyRate || 0) ? "td--loss" : "";
               const valueClass = !isSold && valueAsOfLtp > Number(inv.buyAmt || 0) ? "td--profit" : !isSold && valueAsOfLtp < Number(inv.buyAmt || 0) ? "td--loss" : "";
               const sn     = snMap[groupKey];

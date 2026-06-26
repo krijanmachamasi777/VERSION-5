@@ -120,7 +120,11 @@ body {
 }
 
 .topbar__profile-email:hover {
-  text-decoration: underline;
+
+  text-decoration: none;
+  color: var(--muted);
+
+
 }
 
 .topbar__logout-btn {

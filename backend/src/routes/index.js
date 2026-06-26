@@ -6,13 +6,21 @@ const notificationCtrl = require("../controllers/notificationController");
 const journalCtrl      = require("../controllers/journalController");
 const watchlistCtrl    = require("../controllers/watchlistController");
 const protect          = require("../middleware/auth");
+<<<<<<< HEAD
+=======
+const { loginLimiter } = require("../middleware/rateLimiter");
+>>>>>>> 8076237d6148fb044177d62e63a60e7dca6092a0
 
 router.get("/health", (req, res) =>
   res.json({ status: "ok", timestamp: new Date().toISOString() })
 );
 
 // ── Public routes (no JWT required) ──────────────────────────────────
+<<<<<<< HEAD
 router.post("/auth/login", authCtrl.login);
+=======
+router.post("/auth/login", loginLimiter, authCtrl.login);
+>>>>>>> 8076237d6148fb044177d62e63a60e7dca6092a0
 
 // ── Protected routes (JWT required) ──────────────────────────────────
 router.use(protect);
@@ -53,4 +61,8 @@ router.post("/watchlist-items",          watchlistCtrl.createWatchlistItem);
 router.put("/watchlist-items/:id",       watchlistCtrl.updateWatchlistItem);
 router.delete("/watchlist-items/:id",    watchlistCtrl.deleteWatchlistItem);
 
+<<<<<<< HEAD
 module.exports = router;
+=======
+module.exports = router;
+>>>>>>> 8076237d6148fb044177d62e63a60e7dca6092a0

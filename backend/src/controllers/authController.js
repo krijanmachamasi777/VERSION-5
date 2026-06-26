@@ -21,10 +21,7 @@ const MeroShareClient = require("../services/meroshareClient");
 const { runFullSync } = require("../services/syncService");
 const logger = require("../utils/logger");
 const { ensureUserCollections } = require("../utils/userCollections");
-<<<<<<< HEAD
-=======
 const { encrypt } = require("../utils/encryption");
->>>>>>> 8076237d6148fb044177d62e63a60e7dca6092a0
 
 const ok  = (res, data, meta = {}) => res.json({ success: true, ...meta, data });
 const err = (res, message, status = 400) =>
@@ -94,11 +91,7 @@ exports.login = async (req, res) => {
       user.name           = profile.name;
       user.email          = profile.email;
       user.lastLoginAt    = new Date();
-<<<<<<< HEAD
-      user.meroshareToken = client.token;
-=======
       user.meroshareToken = encrypt(client.token);
->>>>>>> 8076237d6148fb044177d62e63a60e7dca6092a0
       await user.save();
     } else {
       user = await User.create({
@@ -109,11 +102,7 @@ exports.login = async (req, res) => {
         name:           profile.name,
         email:          profile.email,
         lastLoginAt:    new Date(),
-<<<<<<< HEAD
-        meroshareToken: client.token,
-=======
         meroshareToken: encrypt(client.token),
->>>>>>> 8076237d6148fb044177d62e63a60e7dca6092a0
       });
     }
 
@@ -185,8 +174,4 @@ exports.logout = async (req, res) => {
     logger.error(e);
     res.status(500).json({ success: false, message: "Logout failed." });
   }
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> 8076237d6148fb044177d62e63a60e7dca6092a0

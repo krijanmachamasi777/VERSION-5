@@ -1,5 +1,6 @@
 // src/middleware/rateLimiter.js
 const rateLimit = require("express-rate-limit");
+const { ipKeyGenerator } = require("express-rate-limit");
 const logger = require("../utils/logger");
 
 // Combines IP + username so different users on same WiFi are not blocked together
@@ -10,10 +11,13 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 
-  // KEY CHANGE: per user + IP combination
-  keyGenerator: (req) => {
+  // KEY CHANGE: per user + IP combination.
+  // ipKeyGenerator normalizes IPv6 addresses (collapses them to a /64
+  // subnet) so IPv6 clients can't bypass the limit by rotating addresses
+  // within their prefix. Required by express-rate-limit v8.
+  keyGenerator: (req, res) => {
     const username = req.body?.username || "unknown";
-    return `${req.ip}-${username}`;
+    return `${ipKeyGenerator(req.ip)}-${username}`;
   },
 
   message: {

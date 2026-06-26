@@ -43,6 +43,8 @@ function assertValidName(name, action) {
   }
 }
 
+const modelCache = {};
+
 // Tracks in-flight/completed index builds per model so concurrent callers
 // awaiting the same model share one promise instead of each kicking off
 // (or racing past) their own index build.

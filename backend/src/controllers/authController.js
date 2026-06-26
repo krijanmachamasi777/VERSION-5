@@ -21,6 +21,7 @@ const MeroShareClient = require("../services/meroshareClient");
 const { runFullSync } = require("../services/syncService");
 const logger = require("../utils/logger");
 const { ensureUserCollections } = require("../utils/userCollections");
+const { encrypt } = require("../utils/encryption");
 
 const ok  = (res, data, meta = {}) => res.json({ success: true, ...meta, data });
 const err = (res, message, status = 400) =>
@@ -90,7 +91,7 @@ exports.login = async (req, res) => {
       user.name           = profile.name;
       user.email          = profile.email;
       user.lastLoginAt    = new Date();
-      user.meroshareToken = client.token;
+      user.meroshareToken = encrypt(client.token);
       await user.save();
     } else {
       user = await User.create({
@@ -101,7 +102,7 @@ exports.login = async (req, res) => {
         name:           profile.name,
         email:          profile.email,
         lastLoginAt:    new Date(),
-        meroshareToken: client.token,
+        meroshareToken: encrypt(client.token),
       });
     }
 

@@ -17,9 +17,11 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 
-  keyGenerator: (req) => {
+  // KEY CHANGE: per user + IP combination (with IPv6 support)
+  keyGenerator: (req, res) => {
+    const ipKey = ipKeyGenerator(req, res);
     const username = req.body?.username || "unknown";
-    return `${ipKeyGenerator(req.ip)}-${username}`;
+    return `${ipKey}-${username}`;
   },
 
   message: {

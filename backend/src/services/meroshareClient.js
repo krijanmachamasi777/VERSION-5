@@ -10,6 +10,30 @@ const {
 } = require("../config/meroshare");
 const logger = require("../utils/logger");
 
+// ── FIX [HIGH — SEC-6]: Add timeout to all external API calls ────────────
+//
+// BUG (original): Every axios call was made without a `timeout` option.
+// If the MeroShare / CDSC API hangs (slow response, network issue, or
+// deliberate slow-loris from the upstream), the Express worker will hold
+// the open socket indefinitely. Under load this exhausts the Node.js
+// event loop and starves all other in-flight requests. For a login endpoint
+// this is especially bad because:
+//   • The login handler awaits client.login() synchronously
+//   • A hung login blocks JWT issuance
+//   • Combined with the sync step, one hung login can hold a worker for minutes
+//
+// FIX: Use a shared axios instance with a 15-second request timeout.
+// 15 s is generous for the CDSC API (p99 latency is well under 5 s in
+// practice) but prevents indefinite hangs. The WACC per-script fallback
+// loop uses the same instance, so a hung upstream won't stall the entire
+// sync either.
+//
+const AXIOS_TIMEOUT_MS = 15_000; // 15 seconds
+
+const http = axios.create({
+  timeout: AXIOS_TIMEOUT_MS,
+});
+
 class MeroShareClient {
   constructor(credentials = {}) {
     this.credentials = {
@@ -43,11 +67,12 @@ class MeroShareClient {
       throw new Error("BOID not set. Call getOwnDetails() first.");
     }
   }
+
   // ── Auth ────────────────────────────────────────────────────────────
 
   async login() {
     logger.debug("Logging in to MeroShare...");
-    const res = await axios.post(
+    const res = await http.post(
       `${AUTH_URL}/auth/`,
       {
         clientId: this.credentials.clientId,
@@ -70,7 +95,7 @@ class MeroShareClient {
 
   async getOwnDetails() {
     this._requireAuth();
-    const res = await axios.get(`${AUTH_URL}/ownDetail/`, {
+    const res = await http.get(`${AUTH_URL}/ownDetail/`, {
       headers: this._headers(),
     });
     const d = res.data;
@@ -86,7 +111,7 @@ class MeroShareClient {
 
   async getMyShares(page = DEFAULTS.PAGE, size = DEFAULTS.SIZE) {
     this._requireAuth();
-    const res = await axios.post(
+    const res = await http.post(
       `${VIEW_URL}/myShare/`,
       {
         sortBy: "CCY_SHORT_NAME",
@@ -110,7 +135,7 @@ class MeroShareClient {
 
   async getPortfolio(page = DEFAULTS.PAGE, size = DEFAULTS.SIZE) {
     this._requireAuth();
-    const res = await axios.post(
+    const res = await http.post(
       `${VIEW_URL}/myPortfolio/`,
       {
         sortBy: "script",
@@ -141,7 +166,7 @@ class MeroShareClient {
 
   async getApplicableIssues(page = DEFAULTS.PAGE, size = DEFAULTS.SIZE) {
     this._requireAuth();
-    const res = await axios.post(
+    const res = await http.post(
       `${AUTH_URL}/companyShare/applicableIssue/`,
       {
         filterDateParams: [
@@ -180,7 +205,7 @@ class MeroShareClient {
 
   async getWaccForScript(script) {
     this._requireAuth();
-    const res = await axios.post(
+    const res = await http.post(
       `${PURCHASE_URL}/search/wacc/`,
       { demat: this.boid, scrip: script },
       { headers: this._headers() },
@@ -194,7 +219,7 @@ class MeroShareClient {
   async getWaccForAll(scripts = []) {
     this._requireAuth();
     try {
-      const res = await axios.post(
+      const res = await http.post(
         `${PURCHASE_URL}/search/wacc/`,
         { demat: this.boid, scrip: "", isFilterByAllScript: true },
         { headers: this._headers() },
@@ -232,7 +257,7 @@ class MeroShareClient {
     const boid = demat || this.boid;
 
     try {
-      const res = await axios.post(
+      const res = await http.post(
         `${EDIS_URL}/transfer/active/`,
         { demat: boid },
         { headers: this._headers() },
@@ -271,7 +296,7 @@ class MeroShareClient {
     this._requireAuth();
 
     try {
-      const res = await axios.get(
+      const res = await http.get(
         `${EDIS_URL}/transfer/detail/${settlementId}`,
         { headers: this._headers() },
       );

@@ -83,6 +83,28 @@ exports.login = async (req, res) => {
     const profile = await client.getOwnDetails();
 
     // ── Step 2: Upsert the local User document ───────────────────────
+    //
+    // FIX [CRITICAL — SEC-3]: Plaintext password removed from User.create()
+    // and User.save().
+    //
+    // BUG (original): `password` was passed into both `User.create()` and
+    // `user.save()` paths. Although Mongoose's strict mode (on by default)
+    // silently drops fields not present in the schema, the intent was wrong
+    // and dangerous:
+    //   • Any future change adding a `password` field to the schema (e.g. for
+    //     local auth) would instantly start persisting plaintext passwords
+    //     to MongoDB with zero warning.
+    //   • `.select("-password -meroshareToken")` in getMe() implied a false
+    //     belief that the field existed — it would have excluded nothing but
+    //     silently masked the schema mismatch in code review.
+    //   • Passing the plaintext password to runFullSync() propagated it through
+    //     an unnecessary call chain even though the live `client` object was
+    //     already passed (the password path in _buildClient is only reached when
+    //     both `client` and `meroshareToken` are absent — never the case here).
+    //
+    // The MeroShare password is a one-shot credential used only to obtain the
+    // live session token. It must not persist beyond the login request scope.
+    //
     let user = await User.findOne({ username });
 
     if (user) {
@@ -97,7 +119,9 @@ exports.login = async (req, res) => {
       user = await User.create({
         clientId,
         username,
-        password,
+        // password intentionally NOT included — see User.js schema comment.
+        // The MeroShare password is a transient credential; it is used only to
+        // obtain client.token above and must not be persisted in any form.
         boid:           profile.demat,
         name:           profile.name,
         email:          profile.email,
@@ -119,7 +143,10 @@ exports.login = async (req, res) => {
         client,     // already authenticated — no re-login needed
         clientId,
         username,
-        password,
+        // password deliberately omitted — the live `client` above is passed
+        // so _buildClient() in syncService returns it immediately without
+        // needing the password fallback path. Passing password here served
+        // no purpose and unnecessarily propagated the plaintext credential.
         userId,
         name: userName,
       });
@@ -154,6 +181,9 @@ exports.login = async (req, res) => {
 // GET /api/auth/me
 exports.getMe = async (req, res) => {
   try {
+    // NOTE: "-password" is kept in the select projection as a defensive
+    // guard even though no password field exists in the current schema.
+    // If a password field is ever added, it will be excluded automatically.
     const user = await User.findById(req.user.id).select("-password -meroshareToken").lean();
     if (!user) return err(res, "User not found.", 404);
     ok(res, user);

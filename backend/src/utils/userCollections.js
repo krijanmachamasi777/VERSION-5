@@ -25,6 +25,24 @@ const COLLECTION_SCHEMAS = {
   watchlistentries:   watchlistEntrySchema,
 };
 
+// Validates a username/name before it is interpolated into a physical
+// MongoDB collection name. Real values are display names like
+// "Krijan Machamasi", so spaces, dots and hyphens are allowed — but the
+// characters MongoDB treats specially in namespaces ($ and the null byte),
+// the "/" path separator, and the reserved "system." prefix are rejected to
+// prevent collection-name injection.
+function assertValidName(name, action) {
+  const ok =
+    typeof name === "string" &&
+    name.length > 0 &&
+    name.length <= 64 &&
+    /^[A-Za-z0-9 ._-]+$/.test(name) &&
+    !/^system\./i.test(name.trim());
+  if (!ok) {
+    throw new Error(`Invalid username for collection ${action}.`);
+  }
+}
+
 const modelCache = {};
 
 // Tracks in-flight/completed index builds per model so concurrent callers
@@ -51,6 +69,8 @@ const indexReady = {};
  * Collection name format: "Krijan.shares" → appears as folder in Compass
  */
 async function getModel(username, collectionName) {
+  assertValidName(username, "resolution");
+
   // Capitalize first letter to match folder display: "krijan" → "Krijan"
   const folderName = username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
   const collectionKey = `${folderName}.${collectionName}`; // e.g. "Krijan.shares"
@@ -99,6 +119,7 @@ async function getModel(username, collectionName) {
  * and await indexes itself before any read/write happens.
  */
 async function ensureUserCollections(username) {
+  assertValidName(username, "creation");
   const folderName = username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
   const db = mongoose.connection.db;
 
